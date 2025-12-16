@@ -1,24 +1,32 @@
+import 'package:bytebank_flutter/routes.dart';
+import 'package:bytebank_flutter/ui/screens/home.dart';
+import 'package:bytebank_flutter/ui/screens/sign-in.dart';
+import 'package:bytebank_flutter/ui/screens/sign-up.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
-  runApp(Home());
+  runApp(MyApp());
 }
 
-class Home extends StatelessWidget {
-  const Home({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-
-      home: Scaffold(
-        appBar: AppBar(title: Text('Bytebank')),
-        body: Column(
-          children: [Text('Hello World'), Text('Bytebank'), Text('Tech 3')],
+      title: "ByteBank",
+      theme: ThemeData(
+        textTheme: GoogleFonts.interTextTheme(
+          Theme.of(context).textTheme,
         ),
       ),
+      initialRoute: Routes.home,
+      routes: {
+        Routes.home: (context) => Home(),
+        Routes.signUp: (context) => SignUp(),
+        Routes.signIn: (context) => SignIn(),
+      },
     );
   }
 }
