@@ -1,5 +1,6 @@
 import 'package:bytebank_flutter/routes.dart';
 import 'package:bytebank_flutter/ui/themes/app-colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -15,6 +16,8 @@ class _SignUpState extends State<SignUp> {
       TextEditingController();
   final TextEditingController
   _passwordController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +161,19 @@ class _SignUpState extends State<SignUp> {
     );
   }
 
-  void _register() {}
+  void _register() async {
+    try {
+      await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      Navigator.pushReplacementNamed(context, Routes.signIn);
+    } catch(e) {
+      // COLOCAR AQUI SE DER ERROR
+    }
+
+  }
 
   InputDecoration inputDecorationCustom() {
     return InputDecoration(

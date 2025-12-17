@@ -1,5 +1,6 @@
 import 'package:bytebank_flutter/routes.dart';
 import 'package:bytebank_flutter/ui/themes/app-colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,6 +17,9 @@ class _SignInState extends State<SignIn> {
   final TextEditingController
   _passwordController = TextEditingController();
 
+  FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,17 +128,23 @@ class _SignInState extends State<SignIn> {
                                   ),
                             ),
                           ),
-                          onPressed: _register,
-                          child: Text(
-                            "Entrar",
-                            style:
-                                GoogleFonts.inter(
-                                  fontWeight:
-                                      FontWeight
-                                          .bold,
-                                  fontSize: 16,
+                          onPressed: _isLoading ? null : _signIn,
+                          child: _isLoading
+                              ? SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.neutral100,
+                                  ),
+                                )
+                              : Text(
+                                  "Entrar",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                          ),
                         ),
                       ),
                     ],
@@ -158,7 +168,40 @@ class _SignInState extends State<SignIn> {
     );
   }
 
-  void _register() {}
+  void _signIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      print("vamos logar");
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        Routes.home,
+      );
+    } catch (e) {
+      print("Erro ao fazer login: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao fazer login: ${e.toString()}'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   InputDecoration inputDecorationCustom() {
     return InputDecoration(
