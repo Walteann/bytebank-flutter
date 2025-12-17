@@ -1,4 +1,5 @@
 import 'package:bytebank_flutter/routes.dart';
+import 'package:bytebank_flutter/ui/screens/bytebank.dart';
 import 'package:bytebank_flutter/ui/screens/home.dart';
 import 'package:bytebank_flutter/ui/screens/sign-in.dart';
 import 'package:bytebank_flutter/ui/screens/sign-up.dart';
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: Routes.home,
       routes: {
-        Routes.home: (context) => Home(),
+        Routes.home: (context) => BytebankApp(),
         Routes.signUp: (context) => SignUp(),
         Routes.signIn: (context) => SignIn(),
       },
