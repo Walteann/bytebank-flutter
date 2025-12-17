@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "COLOCARAQUI",
+    "project_id": "COLOCARAQUI",
+    "storage_bucket": "COLOCARAQUI"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "COLOCARAQUI",
+        "android_client_info": {
+          "package_name": "COLOCARAQUI"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "COLOCARAQUI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "COLOCARAQUI"
+}
