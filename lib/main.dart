@@ -21,9 +21,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: "ByteBank",
       theme: ThemeData(
-        textTheme: GoogleFonts.interTextTheme(
-          Theme.of(context).textTheme,
-        ),
+        textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
       ),
       initialRoute: Routes.home,
       routes: {
