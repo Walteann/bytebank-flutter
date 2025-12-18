@@ -115,22 +115,16 @@ class BytebankHeader extends StatefulWidget {
 }
 
 class _BytebankHeaderState extends State<BytebankHeader> {
-
-
   @override
   Widget build(BuildContext context) {
+    final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+    _signOut() async {
+      await _auth.signOut();
+      Navigator.pushReplacementNamed(context, Routes.signIn);
+      return;
+    }
 
-  _signOut() async {
-    await _auth.signOut();
-    Navigator.pushReplacementNamed(
-      context,
-      Routes.signIn
-    );
-    return;
-  }
-  
     return Container(
       height: 96,
       width: double.infinity,
@@ -214,30 +208,37 @@ class SidebarMenu extends StatelessWidget {
         const SizedBox(height: 16),
         _buildMenuItem(Icons.home, 'Home'),
         const SizedBox(height: 8),
-        _buildMenuItem(Icons.account_balance_wallet, 'Transactions'),
+        _buildMenuItem(
+          Icons.account_balance_wallet,
+          'Transactions',
+          onTap: () => Navigator.pushNamed(context, Routes.transactions),
+        ),
         const SizedBox(height: 8),
         _buildMenuItem(Icons.bar_chart, 'Reports'),
       ],
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Colors.grey.shade100,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFF004D61)),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-        ],
+  Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          color: Colors.grey.shade100,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF004D61)),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
       ),
     );
   }

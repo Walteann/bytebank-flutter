@@ -1,5 +1,7 @@
 import 'package:bytebank_flutter/routes.dart';
+import 'package:bytebank_flutter/transaction_model.dart';
 import 'package:bytebank_flutter/ui/screens/bytebank.dart';
+import 'package:bytebank_flutter/ui/screens/extrato_screen.dart';
 import 'package:bytebank_flutter/ui/screens/home.dart';
 import 'package:bytebank_flutter/ui/screens/sign-in.dart';
 import 'package:bytebank_flutter/ui/screens/sign-up.dart';
@@ -9,7 +11,12 @@ import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  //await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Erro ao inicializar Firebase: $e');
+  }
   runApp(MyApp());
 }
 
@@ -28,6 +35,8 @@ class MyApp extends StatelessWidget {
         Routes.home: (context) => BytebankApp(),
         Routes.signUp: (context) => SignUp(),
         Routes.signIn: (context) => SignIn(),
+        Routes.transactions: (context) =>
+            ExtratoScreen(transactions: mockTransactions),
       },
     );
   }

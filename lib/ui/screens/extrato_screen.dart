@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:flutter/material.dart';
-import 'transaction_model.dart';
+import '../../transaction_model.dart';
 
 class ExtratoScreen extends StatefulWidget {
   final List<Transaction> transactions;
