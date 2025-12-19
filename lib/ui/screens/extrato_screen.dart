@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../transaction_model.dart';
+import 'bytebank.dart';
 
 class ExtratoScreen extends StatefulWidget {
   final List<Transaction> transactions;
@@ -25,9 +27,8 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
   int _nextId = 5;
-  // sem auth: ownerId 'demo_user'
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _demoOwnerId = 'demo_user';
+  String get _userId => FirebaseAuth.instance.currentUser?.uid ?? 'demo_user';
 
   @override
   void initState() {
@@ -42,15 +43,14 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
       }
     });
     // busca inicial do Firestore (se vazio, usa mocks)
-    // fetchTransactionsFromFirestore(ownerId: _demoOwnerId);
     _populateAndFetch();
   }
 
   Future<void> _populateAndFetch() async {
     try {
-      // adiciona uma transação de exemplo para o owner de teste
+      // adiciona uma transação de exemplo
       await addSampleTransactionToFirestore(
-        ownerId: _demoOwnerId,
+        ownerId: _userId,
         type: 'credit',
         value: 99.90,
         date: DateTime.now(),
@@ -72,9 +72,8 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
         );
       }
     } finally {
-      // busca (pode usar dados do Firestore ou fallback para mocks)
       if (mounted) {
-        await fetchTransactionsFromFirestore(ownerId: _demoOwnerId);
+        await fetchTransactionsFromFirestore(ownerId: _userId);
       }
     }
   }
@@ -95,7 +94,6 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
     final List<Transaction> more = _generateMoreTransactions(10);
     _allTransitions.addAll(more);
 
-    // reaplica filtros para que a lista exibida receba os novos itens se aplicável
     _applyFilters();
 
     setState(() => _isLoadingMore = false);
@@ -322,6 +320,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       builder: (ctx) {
         DateTimeRange? auxRange = _dateRange;
         String tempCategory = _selectedCategory;
@@ -525,6 +524,10 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                                 _applyFilters();
                                 Navigator.of(context).pop();
                               },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF004D61),
+                                foregroundColor: Colors.white,
+                              ),
                               child: const Text('Aplicar'),
                             ),
                           ),
@@ -566,18 +569,61 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Extrato'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _openFilterSheet,
-            tooltip: 'Filtros',
+      backgroundColor: const Color(0xFFE4EDE3),
+      body: Column(
+        children: [
+          const BytebankHeader(),
+          Expanded(
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                width: double.infinity,
+                height: double.infinity,
+                padding: const EdgeInsets.all(24.0),
+                child: _buildContent(),
+              ),
+            ),
           ),
         ],
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildContent() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  if (Navigator.canPop(context))
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Color(0xFF004D61),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  const Text(
+                    'Extrato',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.filter_list, color: Color(0xFF004D61)),
+                onPressed: _openFilterSheet,
+                tooltip: 'Filtros',
+              ),
+            ],
+          ),
           if (_dateRange != null ||
               _selectedCategory != 'Todos' ||
               _selectedType != 'Todos' ||
@@ -586,7 +632,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
               _maxValue != null ||
               _searchQuery.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
                   Expanded(
@@ -627,20 +673,26 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                 ],
               ),
             ),
-
+          const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(12),
+              controller: _scrollController,
               itemCount: _filteredTransactions.length,
               itemBuilder: (context, index) {
                 final tx = _filteredTransactions[index];
-                return Card(
+                return Container(
                   margin: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200),
+                    ),
+                  ),
                   child: ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       backgroundColor: _colorForType(
                         tx.type,
-                      ).withValues(alpha: 0.2),
+                      ).withValues(alpha: 0.1),
                       child: Icon(
                         tx.type == TransactionType.credit
                             ? Icons.arrow_downward
@@ -648,17 +700,35 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                         color: _colorForType(tx.type),
                       ),
                     ),
-                    title: Text(tx.description),
+                    title: Text(
+                      tx.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tx.category),
-                        const SizedBox(height: 4),
-                        Text(tx.date, style: const TextStyle(fontSize: 12)),
+                        Text(
+                          tx.category,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        Text(
+                          tx.date,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
                       ],
                     ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           '${_signForType(tx.type)} R\$ ${tx.value.toStringAsFixed(2)}',
