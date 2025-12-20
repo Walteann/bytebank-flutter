@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
 enum TransactionType { credit, debit }
 
 class Transaction {
@@ -18,115 +21,34 @@ class Transaction {
     required this.category,
     required this.anexo,
   });
-}
 
-final List<Transaction> mockTransactions = [
-  Transaction(
-    id: 't1',
-    type: TransactionType.credit,
-    value: 1500.00,
-    date: '2025-11-01',
-    description: 'Salário',
-    category: 'Receita',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't2',
-    type: TransactionType.debit,
-    value: 120.75,
-    date: '2025-11-03',
-    description: 'Compra supermercado',
-    category: 'Alimentação',
-    anexo: ['nota1.jpg'],
-  ),
-  Transaction(
-    id: 't3',
-    type: TransactionType.debit,
-    value: 60.00,
-    date: '2025-11-05',
-    description: 'Transporte',
-    category: 'Transporte',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't1',
-    type: TransactionType.credit,
-    value: 1500.00,
-    date: '2025-11-01',
-    description: 'Salário',
-    category: 'Receita',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't2',
-    type: TransactionType.debit,
-    value: 120.75,
-    date: '2025-11-03',
-    description: 'Compra supermercado',
-    category: 'Alimentação',
-    anexo: ['nota1.jpg'],
-  ),
-  Transaction(
-    id: 't3',
-    type: TransactionType.debit,
-    value: 60.00,
-    date: '2025-11-05',
-    description: 'Transporte',
-    category: 'Transporte',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't1',
-    type: TransactionType.credit,
-    value: 1500.00,
-    date: '2025-11-01',
-    description: 'Salário',
-    category: 'Receita',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't2',
-    type: TransactionType.debit,
-    value: 120.75,
-    date: '2025-11-03',
-    description: 'Compra supermercado',
-    category: 'Alimentação',
-    anexo: ['nota1.jpg'],
-  ),
-  Transaction(
-    id: 't3',
-    type: TransactionType.debit,
-    value: 60.00,
-    date: '2025-11-05',
-    description: 'Transporte',
-    category: 'Transporte',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't1',
-    type: TransactionType.credit,
-    value: 1500.00,
-    date: '2025-11-01',
-    description: 'Salário',
-    category: 'Receita',
-    anexo: [],
-  ),
-  Transaction(
-    id: 't2',
-    type: TransactionType.debit,
-    value: 120.75,
-    date: '2025-11-03',
-    description: 'Compra supermercado',
-    category: 'Alimentação',
-    anexo: ['nota1.jpg'],
-  ),
-  Transaction(
-    id: 't3',
-    type: TransactionType.debit,
-    value: 60.00,
-    date: '2025-11-05',
-    description: 'Transporte',
-    category: 'Transporte',
-    anexo: [],
-  ),
-];
+  factory Transaction.fromFirestore(String id, Map<String, dynamic> data) {
+    final dateField = data['date'];
+
+    return Transaction(
+      id: id,
+      type: (data['type'] ?? 'debit') == 'credit'
+          ? TransactionType.credit
+          : TransactionType.debit,
+      value: (data['value'] as num).toDouble(),
+      date: dateField is Timestamp
+          ? dateField.toDate().toIso8601String().substring(0, 10)
+          : dateField.toString(),
+      description: data['description'] ?? '',
+      category: data['category'] ?? 'Outros',
+      anexo: List<String>.from(data['anexo'] ?? []),
+    );
+  }
+
+  Map<String, dynamic> toFirestore(String userId) {
+    return {
+      'userId': userId,
+      'type': type.name,
+      'value': value,
+      'date': Timestamp.fromDate(DateTime.parse(date)),
+      'description': description,
+      'category': category,
+      'anexo': anexo,
+    };
+  }
+}

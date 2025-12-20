@@ -49,15 +49,19 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   Future<void> _populateAndFetch() async {
     try {
       // adiciona uma transação de exemplo
-      await addSampleTransactionToFirestore(
-        ownerId: _userId,
-        type: 'credit',
+      final tx = Transaction(
+        id: '',
+        type: TransactionType.credit,
         value: 99.90,
-        date: DateTime.now(),
-        description: 'Transação demo (inserida pelo app)',
+        date: DateTime.now().toIso8601String().substring(0, 10),
+        description: 'Transação demo',
         category: 'Teste',
         anexo: [],
       );
+
+      await _firestore
+          .collection('transactions')
+          .add(tx.toFirestore(_userId));
       debugPrint('addSampleTransactionToFirestore: sucesso');
     } catch (e, st) {
       // log do erro para DEBUG
