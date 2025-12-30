@@ -59,10 +59,8 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
         anexo: [],
       );
 
-      await _firestore
-          .collection('transactions')
-          .add(tx.toFirestore(_userId));
-      debugPrint('addSampleTransactionToFirestore: sucesso');
+      await _firestore.collection('transactions').add(tx.toFirebase(_userId));
+      debugPrint('addSampleTransactionToFirebase: sucesso');
     } catch (e, st) {
       // log do erro para DEBUG
       debugPrint('Erro ao adicionar sample transaction: $e');
@@ -104,7 +102,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   }
 
   // adiciona uma transação de exemplo ao Firestore (útil em DEV)
-  Future<void> addSampleTransactionToFirestore({
+  Future<void> addSampleTransactionToFirebase({
     String ownerId = 'demo_user',
     String type = 'debit',
     double value = 42.0,
@@ -129,7 +127,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
           .timeout(const Duration(seconds: 5));
       debugPrint('Documento criado: ${ref.id}');
     } catch (e, st) {
-      debugPrint('Erro em addSampleTransactionToFirestore: $e');
+      debugPrint('Erro em addSampleTransactionToFirebase: $e');
       debugPrint('$st');
       rethrow;
     }

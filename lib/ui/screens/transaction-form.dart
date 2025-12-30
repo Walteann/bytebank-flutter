@@ -1,5 +1,6 @@
 import 'package:bytebank_flutter/storage_service.dart';
 import 'package:bytebank_flutter/transaction_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -123,7 +124,7 @@ class _TransactionFormState extends State<TransactionForm> {
     final storageService = StorageService();
 
     final anexosUrls = await storageService.uploadTransactionFiles(
-      userId: 'USER_ID_AQUI',
+      userId: "123user",
       files: _anexos,
     );
 

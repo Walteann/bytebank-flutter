@@ -40,7 +40,7 @@ class Transaction {
     );
   }
 
-  Map<String, dynamic> toFirestore(String userId) {
+  Map<String, dynamic> toFirebase(String userId) {
     return {
       'userId': userId,
       'type': type.name,
