@@ -128,6 +128,8 @@ class _TransactionFormState extends State<TransactionForm> {
       files: _anexos,
     );
 
+    final urls = anexosUrls.map((e) => e['url']!).toList();
+
     final transaction = Transaction(
       id: widget.editingTransaction?.id ?? '',
       type: _transactionType!,
@@ -137,7 +139,7 @@ class _TransactionFormState extends State<TransactionForm> {
       date:
           widget.editingTransaction?.date ??
           DateTime.now().toIso8601String().substring(0, 10),
-      anexo: anexosUrls,
+      anexo: urls,
     );
   }
 
