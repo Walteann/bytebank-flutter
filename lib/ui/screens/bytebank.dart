@@ -3,6 +3,8 @@ import 'package:bytebank_flutter/ui/screens/sign-in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:bytebank_flutter/ui/components/balance_card.dart';
+import 'package:bytebank_flutter/ui/components/home_page_chart.dart';
 
 class BytebankApp extends StatefulWidget {
   const BytebankApp({super.key});
@@ -256,36 +258,36 @@ class HomePage extends StatelessWidget {
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
 
     if (isDesktop) {
-      // Desktop layout: Main content and aside side by side
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Main content area
           Expanded(
             child: Column(
               children: [
-                const PlaceholderCard(title: 'Balance Card'),
+                const BalanceCard(), // ← ALTERADO
                 const SizedBox(height: 24),
-                const PlaceholderCard(title: 'Transaction Form'),
+                const PlaceholderCard(
+                  title: 'Transaction Form',
+                ), // Manter por enquanto
                 const SizedBox(height: 24),
-                const PlaceholderCard(title: 'Home Page Chart'),
+                const HomePageChart(), // ← ALTERADO
               ],
             ),
           ),
           const SizedBox(width: 24),
-          // Aside (Statement)
           SizedBox(width: 282, child: const RecentTransactions()),
         ],
       );
     } else {
-      // Mobile layout: Stacked
       return Column(
         children: [
-          const PlaceholderCard(title: 'Balance Card'),
+          const BalanceCard(), // ← ALTERADO
           const SizedBox(height: 24),
-          const PlaceholderCard(title: 'Transaction Form'),
+          const PlaceholderCard(
+            title: 'Transaction Form',
+          ), // Manter por enquanto
           const SizedBox(height: 24),
-          const PlaceholderCard(title: 'Home Page Chart'),
+          const HomePageChart(), // ← ALTERADO
           const SizedBox(height: 24),
           const RecentTransactions(),
         ],

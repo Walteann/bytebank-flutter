@@ -131,6 +131,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
     }
   }
 
+  //firestore fetch dados usuario
   Future<void> fetchTransactionsFromFirestore({
     String ownerId = 'demo_user',
   }) async {
