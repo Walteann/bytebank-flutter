@@ -1,3 +1,4 @@
+import 'package:bytebank_flutter/ui/screens/transaction-form.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +45,34 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
     });
     // busca inicial do Firestore (se vazio, usa mocks)
     _populateAndFetch();
+  }
+
+  Future<void> _openEditTransaction(Transaction tx) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: TransactionForm(
+            editingTransaction: tx,
+            isModal: true,
+            onCancel: () => Navigator.pop(context),
+          ),
+        );
+      },
+    );
+
+    // se salvou com sucesso, recarrega o extrato
+    if (updated == true) {
+      await fetchTransactionsFromFirestore(ownerId: _userId);
+    }
   }
 
   Future<void> _populateAndFetch() async {
@@ -690,6 +719,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                     ),
                   ),
                   child: ListTile(
+                    onTap: () => _openEditTransaction(tx),
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       backgroundColor: _colorForType(

@@ -1,9 +1,12 @@
+import 'package:bytebank_flutter/file_base64_service.dart';
 import 'package:bytebank_flutter/storage_service.dart';
 import 'package:bytebank_flutter/transaction_model.dart';
+import 'package:bytebank_flutter/transaction_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_masked_text2/flutter_masked_text2.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? editingTransaction;
@@ -23,10 +26,16 @@ class TransactionForm extends StatefulWidget {
 
 class _TransactionFormState extends State<TransactionForm> {
   final _formKey = GlobalKey<FormState>();
+  final _base64Service = FileBase64Service();
 
-  final _valueController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _categoryController = TextEditingController();
+
+  final _valueController = MoneyMaskedTextController(
+    decimalSeparator: ',',
+    thousandSeparator: '.',
+    leftSymbol: 'R\$ ',
+  );
 
   TransactionType? _transactionType;
   String _valueError = '';
@@ -47,13 +56,16 @@ class _TransactionFormState extends State<TransactionForm> {
   ];
 
   Future<void> _pickFiles() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      withData: false,
+    );
 
-    if (result != null) {
-      setState(() {
-        _anexos.addAll(result.paths.whereType<String>().map((p) => File(p)));
-      });
-    }
+    if (result == null) return;
+
+    setState(() {
+      _anexos = result.paths.whereType<String>().map(File.new).toList();
+    });
   }
 
   bool get isEditMode => widget.editingTransaction != null;
@@ -90,26 +102,21 @@ class _TransactionFormState extends State<TransactionForm> {
     });
   }
 
-  void _validateValue() {
-    final raw = _valueController.text
-        .replaceAll(RegExp(r'[^\d,.-]'), '')
-        .replaceAll(',', '.');
+  void _resetForm() {
+    _formKey.currentState?.reset();
 
-    final value = double.tryParse(raw);
+    _valueController.updateValue(0);
+    _descriptionController.clear();
+    _categoryController.clear();
 
-    if (value == null || value <= 0) {
-      setState(() {
-        _valueError = 'Digite um valor válido maior que zero.';
-        _valueController.text = '0';
-      });
-    } else {
-      setState(() => _valueError = '');
-    }
+    setState(() {
+      _transactionType = null;
+      _filteredCategories.clear();
+      _anexos.clear();
+    });
   }
 
   Future<void> _handleSubmit() async {
-    _validateValue();
-
     if (!_formKey.currentState!.validate() ||
         _valueError.isNotEmpty ||
         _transactionType == null) {
@@ -119,28 +126,34 @@ class _TransactionFormState extends State<TransactionForm> {
       return;
     }
 
-    final value = double.parse(_valueController.text.replaceAll(',', '.'));
-
-    final storageService = StorageService();
-
-    final anexosUrls = await storageService.uploadTransactionFiles(
-      userId: "123user",
-      files: _anexos,
-    );
-
-    final urls = anexosUrls.map((e) => e['url']!).toList();
+    final base64Files = await _base64Service.filesToBase64(_anexos);
 
     final transaction = Transaction(
       id: widget.editingTransaction?.id ?? '',
       type: _transactionType!,
-      value: value,
-      description: _descriptionController.text,
-      category: _categoryController.text,
+      value: _valueController.numberValue,
       date:
           widget.editingTransaction?.date ??
           DateTime.now().toIso8601String().substring(0, 10),
-      anexo: urls,
+      description: _descriptionController.text,
+      category: _categoryController.text,
+      anexo: base64Files,
     );
+
+    final transactionService = TransactionService();
+    await transactionService.save(transaction);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Transação salva com sucesso!')),
+    );
+
+    if (widget.isModal) {
+      Navigator.pop(context, true);
+    } else {
+      _resetForm();
+    }
   }
 
   @override
@@ -225,7 +238,12 @@ class _TransactionFormState extends State<TransactionForm> {
                 labelText: 'Valor',
                 errorText: _valueError.isNotEmpty ? _valueError : null,
               ),
-              onEditingComplete: _validateValue,
+              validator: (_) {
+                if (_valueController.numberValue <= 0) {
+                  return 'Digite um valor maior que zero';
+                }
+                return null;
+              },
             ),
 
             const SizedBox(height: 24),
