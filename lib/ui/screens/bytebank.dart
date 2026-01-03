@@ -1,5 +1,6 @@
 import 'package:bytebank_flutter/routes.dart';
 import 'package:bytebank_flutter/ui/screens/sign-in.dart';
+import 'package:bytebank_flutter/ui/screens/transaction-form.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -283,7 +284,7 @@ class HomePage extends StatelessWidget {
         children: [
           const PlaceholderCard(title: 'Balance Card'),
           const SizedBox(height: 24),
-          const PlaceholderCard(title: 'Transaction Form'),
+          CardContainer(child: TransactionForm()),
           const SizedBox(height: 24),
           const PlaceholderCard(title: 'Home Page Chart'),
           const SizedBox(height: 24),
@@ -291,6 +292,26 @@ class HomePage extends StatelessWidget {
         ],
       );
     }
+  }
+}
+
+class CardContainer extends StatelessWidget {
+  final Widget child;
+
+  const CardContainer({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: child,
+    );
   }
 }
 

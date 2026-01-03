@@ -1,3 +1,4 @@
+import 'package:bytebank_flutter/ui/screens/transaction-form.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -46,19 +47,49 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
     _populateAndFetch();
   }
 
+  Future<void> _openEditTransaction(Transaction tx) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: TransactionForm(
+            editingTransaction: tx,
+            isModal: true,
+            onCancel: () => Navigator.pop(context),
+          ),
+        );
+      },
+    );
+
+    // se salvou com sucesso, recarrega o extrato
+    if (updated == true) {
+      await fetchTransactionsFromFirestore(ownerId: _userId);
+    }
+  }
+
   Future<void> _populateAndFetch() async {
     try {
       // adiciona uma transação de exemplo
-      await addSampleTransactionToFirestore(
-        ownerId: _userId,
-        type: 'credit',
+      final tx = Transaction(
+        id: '',
+        type: TransactionType.credit,
         value: 99.90,
-        date: DateTime.now(),
-        description: 'Transação demo (inserida pelo app)',
+        date: DateTime.now().toIso8601String().substring(0, 10),
+        description: 'Transação demo',
         category: 'Teste',
         anexo: [],
       );
-      debugPrint('addSampleTransactionToFirestore: sucesso');
+
+      await _firestore.collection('transactions').add(tx.toFirebase(_userId));
+      debugPrint('addSampleTransactionToFirebase: sucesso');
     } catch (e, st) {
       // log do erro para DEBUG
       debugPrint('Erro ao adicionar sample transaction: $e');
@@ -100,7 +131,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   }
 
   // adiciona uma transação de exemplo ao Firestore (útil em DEV)
-  Future<void> addSampleTransactionToFirestore({
+  Future<void> addSampleTransactionToFirebase({
     String ownerId = 'demo_user',
     String type = 'debit',
     double value = 42.0,
@@ -125,7 +156,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
           .timeout(const Duration(seconds: 5));
       debugPrint('Documento criado: ${ref.id}');
     } catch (e, st) {
-      debugPrint('Erro em addSampleTransactionToFirestore: $e');
+      debugPrint('Erro em addSampleTransactionToFirebase: $e');
       debugPrint('$st');
       rethrow;
     }
@@ -688,6 +719,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                     ),
                   ),
                   child: ListTile(
+                    onTap: () => _openEditTransaction(tx),
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       backgroundColor: _colorForType(
