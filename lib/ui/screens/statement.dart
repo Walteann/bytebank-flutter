@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import '../../transaction_model.dart';
 import 'bytebank.dart';
 
-class ExtratoScreen extends StatefulWidget {
+class Statement extends StatefulWidget {
   final List<Transaction> transactions;
 
-  const ExtratoScreen({super.key, required this.transactions});
+  const Statement({super.key, required this.transactions});
 
   @override
-  State<ExtratoScreen> createState() => _ExtratoScreenState();
+  State<Statement> createState() => _StatementState();
 }
 
-class _ExtratoScreenState extends State<ExtratoScreen> {
+class _StatementState extends State<Statement> {
   late List<Transaction> _allTransitions;
   late List<Transaction> _filteredTransactions;
   DateTimeRange? _dateRange;
@@ -27,7 +27,6 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
 
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
-  int _nextId = 5;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String get _userId => FirebaseAuth.instance.currentUser?.uid ?? 'demo_user';
 
@@ -36,15 +35,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
     super.initState();
     _allTransitions = [];
     _filteredTransactions = [];
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >=
-              _scrollController.position.maxScrollExtent - 200 &&
-          !_isLoadingMore) {
-        _loadMore();
-      }
-    });
-    // busca inicial do Firestore (se vazio, usa mocks)
-    _populateAndFetch();
+    fetchTransactionsFromFirestore(ownerId: _userId);
   }
 
   Future<void> _openEditTransaction(Transaction tx) async {
@@ -69,43 +60,8 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
       },
     );
 
-    // se salvou com sucesso, recarrega o extrato
     if (updated == true) {
       await fetchTransactionsFromFirestore(ownerId: _userId);
-    }
-  }
-
-  Future<void> _populateAndFetch() async {
-    try {
-      // adiciona uma transação de exemplo
-      final tx = Transaction(
-        id: '',
-        type: TransactionType.credit,
-        value: 99.90,
-        date: DateTime.now().toIso8601String().substring(0, 10),
-        description: 'Transação demo',
-        category: 'Teste',
-        anexo: [],
-      );
-
-      await _firestore.collection('transactions').add(tx.toFirebase(_userId));
-      debugPrint('addSampleTransactionToFirebase: sucesso');
-    } catch (e, st) {
-      // log do erro para DEBUG
-      debugPrint('Erro ao adicionar sample transaction: $e');
-      debugPrint('$st');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao criar dados: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        await fetchTransactionsFromFirestore(ownerId: _userId);
-      }
     }
   }
 
@@ -113,53 +69,6 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadMore() async {
-    setState(() => _isLoadingMore = true);
-
-    // simula delay de rede / processamento
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    // gera mais transações mock
-    final List<Transaction> more = _generateMoreTransactions(10);
-    _allTransitions.addAll(more);
-
-    _applyFilters();
-
-    setState(() => _isLoadingMore = false);
-  }
-
-  // adiciona uma transação de exemplo ao Firestore (útil em DEV)
-  Future<void> addSampleTransactionToFirebase({
-    String ownerId = 'demo_user',
-    String type = 'debit',
-    double value = 42.0,
-    DateTime? date,
-    String description = 'Lançamento demo',
-    String category = 'Outros',
-    List<String> anexo = const [],
-  }) async {
-    try {
-      final doc = {
-        'userId': ownerId,
-        'type': type,
-        'value': value,
-        'date': Timestamp.fromDate(date ?? DateTime.now()),
-        'description': description,
-        'category': category,
-        'anexo': anexo,
-      };
-      final ref = await _firestore
-          .collection('transactions')
-          .add(doc)
-          .timeout(const Duration(seconds: 5));
-      debugPrint('Documento criado: ${ref.id}');
-    } catch (e, st) {
-      debugPrint('Erro em addSampleTransactionToFirebase: $e');
-      debugPrint('$st');
-      rethrow;
-    }
   }
 
   Future<void> fetchTransactionsFromFirestore({
@@ -170,7 +79,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
       final snap = await _firestore
           .collection('transactions')
           .where('userId', isEqualTo: ownerId)
-          // .orderBy('date', descending: true) // Comentado por causa do erro de índice
+           .orderBy('date', descending: true)
           .get()
           .timeout(const Duration(seconds: 5));
 
@@ -216,11 +125,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
           'fetchTransactionsFromFirestore: encontrou ${_allTransitions.length} docs',
         );
       } else {
-        // fallback para mocks caso não haja docs para o ownerId
-        debugPrint(
-          'fetchTransactionsFromFirestore: nenhuma doc encontrada, usando mocks',
-        );
-        _allTransitions = List.from(widget.transactions);
+        _allTransitions = [];
       }
       _applyFilters();
     } catch (e, st) {
@@ -235,38 +140,11 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
           ),
         );
       }
-      _allTransitions = List.from(widget.transactions);
+      _allTransitions = [];
       _applyFilters();
     } finally {
       setState(() => _isLoadingMore = false);
     }
-  }
-
-  List<Transaction> _generateMoreTransactions(int count) {
-    final List<Transaction> out = [];
-    final now = DateTime.now();
-    for (var i = 0; i < count; i++) {
-      final id = 't${_nextId++}';
-      final daysAgo = (_nextId + i) % 30;
-      final date = now.subtract(Duration(days: daysAgo));
-      final type = (i % 3 == 0)
-          ? TransactionType.credit
-          : TransactionType.debit;
-      final value = (20 + (i * 7)) + (i % 5) * 0.75;
-      final category = (i % 2 == 0) ? 'Alimentação' : 'Serviços';
-      out.add(
-        Transaction(
-          id: id,
-          type: type,
-          value: double.parse(value.toStringAsFixed(2)),
-          date: date.toIso8601String().substring(0, 10),
-          description: 'Lançamento $id',
-          category: category,
-          anexo: (i % 4 == 0) ? ['nota_$id.jpg'] : [],
-        ),
-      );
-    }
-    return out;
   }
 
   void _applyFilters() {
@@ -341,6 +219,16 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
   String _formatDateRangeLabel() {
     if (_dateRange == null) return 'Todas as datas';
     return '${_dateRange!.start.toIso8601String().substring(0, 10)} → ${_dateRange!.end.toIso8601String().substring(0, 10)}';
+  }
+
+  String _formatCurrency(double value) {
+    String valueStr = value.toStringAsFixed(2);
+    List<String> parts = valueStr.split('.');
+    String integerPart = parts[0];
+    String decimalPart = parts[1];
+    RegExp reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+    String result = integerPart.replaceAllMapped(reg, (Match match) => '${match[1]}.');
+    return '$result,$decimalPart';
   }
 
   Future<void> _openFilterSheet() async {
@@ -488,10 +376,10 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('Somente com anexos'),
-                                const SizedBox(width: 8),
                                 Switch(
                                   value: tempOnlyWithAttachment,
                                   onChanged: (v) => setModalState(
@@ -667,33 +555,54 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        if (_dateRange != null)
-                          Chip(label: Text(_formatDateRangeLabel())),
-                        if (_selectedCategory != 'Todos')
-                          Chip(label: Text('Categoria: $_selectedCategory')),
-                        if (_selectedType != 'Todos')
-                          Chip(label: Text('Tipo: $_selectedType')),
-                        if (_onlyWithAttachment)
-                          const Chip(label: Text('Com anexos')),
-                        if (_minValue != null)
-                          Chip(
-                            label: Text(
-                              'Min: R\$ ${_minValue!.toStringAsFixed(2)}',
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (_dateRange != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Chip(label: Text(_formatDateRangeLabel())),
                             ),
-                          ),
-                        if (_maxValue != null)
-                          Chip(
-                            label: Text(
-                              'Max: R\$ ${_maxValue!.toStringAsFixed(2)}',
+                          if (_selectedCategory != 'Todos')
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Chip(
+                                label: Text('Categoria: $_selectedCategory'),
+                              ),
                             ),
-                          ),
-                        if (_searchQuery.isNotEmpty)
-                          Chip(label: Text('Busca: $_searchQuery')),
-                      ],
+                          if (_selectedType != 'Todos')
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Chip(label: Text('Tipo: $_selectedType')),
+                            ),
+                          if (_onlyWithAttachment)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Chip(label: Text('Com anexos')),
+                            ),
+                          if (_minValue != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Chip(
+                                label: Text(
+                                  'Min: R\$ ${_formatCurrency(_minValue!)}',
+                                ),
+                              ),
+                            ),
+                          if (_maxValue != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Chip(
+                                label: Text(
+                                  'Max: R\$ ${_formatCurrency(_maxValue!)}',
+                                ),
+                              ),
+                            ),
+                          if (_searchQuery.isNotEmpty)
+                            Chip(label: Text('Busca: $_searchQuery')),
+                        ],
+                      ),
                     ),
                   ),
                   IconButton(
@@ -763,7 +672,7 @@ class _ExtratoScreenState extends State<ExtratoScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '${_signForType(tx.type)} R\$ ${tx.value.toStringAsFixed(2)}',
+                          '${_signForType(tx.type)} R\$ ${_formatCurrency(tx.value)}',
                           style: TextStyle(
                             color: _colorForType(tx.type),
                             fontWeight: FontWeight.bold,
