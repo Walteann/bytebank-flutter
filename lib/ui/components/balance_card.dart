@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:bytebank_flutter/transaction_service.dart';
 
 // =============================================================================
-// BALANCE CARD - Portado de BalanceCard.tsx (React)
+// BALANCE CARD - Integrado com Firestore via TransactionService
 // =============================================================================
 
 class BalanceCard extends StatefulWidget {
@@ -14,17 +16,7 @@ class BalanceCard extends StatefulWidget {
 
 class _BalanceCardState extends State<BalanceCard> {
   bool _showBalance = true;
-
-  // ===========================================================================
-  // TODO: MOCK DATA - SUBSTITUIR POR DADOS REAIS DO FIRESTORE/AUTH
-  // ===========================================================================
-  final bool _loading = false; // TODO: Conectar ao estado real de loading
-  final bool _error = false; // TODO: Conectar ao estado real de erro
-  final String _userName =
-      'Ymayro'; // TODO: Buscar de FirebaseAuth.instance.currentUser?.displayName
-  final double _currentBalance =
-      15750.42; // TODO: Buscar do Firestore (calcular de transactions)
-  // ===========================================================================
+  final TransactionService _transactionService = TransactionService();
 
   void _toggleVisibility() {
     setState(() {
@@ -54,25 +46,36 @@ class _BalanceCardState extends State<BalanceCard> {
     return formatted[0].toUpperCase() + formatted.substring(1);
   }
 
+  String _getUserName() {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.displayName ?? user?.email?.split('@').first ?? 'Usuário';
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Loading state
-    if (_loading) {
-      return _buildLoadingState();
-    }
+    return StreamBuilder<double>(
+      stream: _transactionService.watchBalance(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingState();
+        }
 
-    // Error state
-    if (_error) {
-      return _buildErrorState();
-    }
+        // Error state
+        if (snapshot.hasError) {
+          return _buildErrorState(snapshot.error.toString());
+        }
 
-    // Normal state
-    return _buildCard();
+        // Normal state
+        final balance = snapshot.data ?? 0.0;
+        return _buildCard(balance);
+      },
+    );
   }
 
   Widget _buildLoadingState() {
     return Container(
-      height: 280,
+      height: 200,
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: const Color(0xFF004D61), // AppColors.primary
@@ -85,7 +88,7 @@ class _BalanceCardState extends State<BalanceCard> {
             CircularProgressIndicator(color: Colors.white),
             SizedBox(height: 16),
             Text(
-              'Carregando...',
+              'Carregando saldo...',
               style: TextStyle(color: Colors.white, fontSize: 14),
             ),
           ],
@@ -94,7 +97,7 @@ class _BalanceCardState extends State<BalanceCard> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String error) {
     return Container(
       padding: const EdgeInsets.all(24),
       margin: const EdgeInsets.only(bottom: 24),
@@ -102,21 +105,32 @@ class _BalanceCardState extends State<BalanceCard> {
         color: Colors.red.shade100,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        'Não foi possível carregar as informações do saldo. Tente novamente mais tarde.',
-        style: TextStyle(color: Colors.red.shade800, fontSize: 16),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade800, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            'Não foi possível carregar as informações do saldo.',
+            style: TextStyle(color: Colors.red.shade800, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tente novamente mais tarde.',
+            style: TextStyle(color: Colors.red.shade600, fontSize: 14),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCard() {
+  Widget _buildCard(double balance) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: const Color(0xFF004D61), // AppColors.primary
         borderRadius: BorderRadius.circular(8),
-        // Simula o bg-custom-pixel do CSS (pode adicionar uma imagem depois)
       ),
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -125,9 +139,9 @@ class _BalanceCardState extends State<BalanceCard> {
             final isWide = constraints.maxWidth > 500;
 
             if (isWide) {
-              return _buildWideLayout();
+              return _buildWideLayout(balance);
             } else {
-              return _buildNarrowLayout();
+              return _buildNarrowLayout(balance);
             }
           },
         ),
@@ -135,7 +149,7 @@ class _BalanceCardState extends State<BalanceCard> {
     );
   }
 
-  Widget _buildWideLayout() {
+  Widget _buildWideLayout(double balance) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -145,7 +159,7 @@ class _BalanceCardState extends State<BalanceCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Olá, $_userName :)',
+              'Olá, ${_getUserName()} :)',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -164,18 +178,18 @@ class _BalanceCardState extends State<BalanceCard> {
           ],
         ),
         // Right side - Balance
-        _buildBalanceSection(),
+        _buildBalanceSection(balance),
       ],
     );
   }
 
-  Widget _buildNarrowLayout() {
+  Widget _buildNarrowLayout(double balance) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Greeting
         Text(
-          'Olá, $_userName :)',
+          'Olá, ${_getUserName()} :)',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -194,12 +208,12 @@ class _BalanceCardState extends State<BalanceCard> {
         ),
         const SizedBox(height: 24),
         // Balance
-        _buildBalanceSection(),
+        _buildBalanceSection(balance),
       ],
     );
   }
 
-  Widget _buildBalanceSection() {
+  Widget _buildBalanceSection(double balance) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -246,7 +260,7 @@ class _BalanceCardState extends State<BalanceCard> {
         const SizedBox(height: 8),
         // Balance value
         Text(
-          _showBalance ? _formatCurrency(_currentBalance) : '••••••••',
+          _showBalance ? _formatCurrency(balance) : '••••••••',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 31,

@@ -1,13 +1,14 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:bytebank_flutter/transaction_service.dart';
 
 // =============================================================================
-// HOME PAGE CHART - Portado de HomePageChart.tsx (React/Recharts)
-// Substituto: fl_chart (adicionar ao pubspec.yaml: fl_chart: ^0.69.0)
+// HOME PAGE CHART - Integrado com Firestore via TransactionService
+// Usa fl_chart (adicionar ao pubspec.yaml: fl_chart: ^0.69.0)
 // =============================================================================
 
-class HomePageChart extends StatelessWidget {
+class HomePageChart extends StatefulWidget {
   final double height;
   final bool showGrid;
   final String title;
@@ -19,103 +20,129 @@ class HomePageChart extends StatelessWidget {
     this.title = 'Extrato da Conta',
   });
 
-  // ===========================================================================
-  // TODO: MOCK DATA - SUBSTITUIR POR DADOS REAIS DO FIRESTORE
-  // ===========================================================================
-  static const bool _loading =
-      false; // TODO: Conectar ao estado real de loading
-  static const bool _error = false; // TODO: Conectar ao estado real de erro
-  static const String? _errorMessage = null;
+  @override
+  State<HomePageChart> createState() => _HomePageChartState();
+}
 
-  // Mock transactions - simula dados que viriam do Firestore
-  static final List<MockTransaction> _mockTransactions = [
-    MockTransaction(date: '2025-01-05', type: 'Credit', value: 3500.00),
-    MockTransaction(date: '2025-01-08', type: 'Debit', value: -150.00),
-    MockTransaction(date: '2025-01-10', type: 'Debit', value: -85.50),
-    MockTransaction(date: '2025-01-12', type: 'Credit', value: 500.00),
-    MockTransaction(date: '2025-01-15', type: 'Debit', value: -320.00),
-    MockTransaction(date: '2025-01-18', type: 'Debit', value: -95.00),
-    MockTransaction(date: '2025-01-20', type: 'Credit', value: 1200.00),
-    MockTransaction(date: '2025-01-22', type: 'Debit', value: -450.00),
-    MockTransaction(date: '2025-01-25', type: 'Debit', value: -180.00),
-    MockTransaction(date: '2025-01-28', type: 'Credit', value: 2800.00),
-  ];
-  // ===========================================================================
+class _HomePageChartState extends State<HomePageChart> {
+  final TransactionService _transactionService = TransactionService();
 
   @override
   Widget build(BuildContext context) {
-    // Loading state
-    if (_loading) {
-      return _buildContainer(
-        child: SizedBox(
-          height: height,
-          child: const Center(
-            child: Text(
-              'Carregando extrato...',
-              style: TextStyle(color: Colors.grey),
+    return StreamBuilder<ChartSummary>(
+      stream: _transactionService.watchChartData(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildContainer(
+            child: SizedBox(
+              height: widget.height,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Carregando extrato...',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      );
-    }
+          );
+        }
 
-    // Error state
-    if (_error) {
-      return _buildContainer(
-        child: SizedBox(
-          height: height,
-          child: Center(
-            child: Text(
-              _errorMessage ?? 'Erro ao carregar dados',
-              style: const TextStyle(color: Colors.red),
+        // Error state
+        if (snapshot.hasError) {
+          return _buildContainer(
+            child: SizedBox(
+              height: widget.height,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Erro ao carregar dados',
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      snapshot.error.toString(),
+                      style: TextStyle(
+                        color: Colors.red.shade400,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      );
-    }
+          );
+        }
 
-    // Empty state
-    if (_mockTransactions.isEmpty) {
-      return _buildContainer(
-        child: SizedBox(
-          height: height,
-          child: const Center(
-            child: Text(
-              'Nenhuma transação encontrada',
-              style: TextStyle(color: Colors.grey),
+        final chartSummary = snapshot.data;
+
+        // Empty state
+        if (chartSummary == null || chartSummary.dataPoints.isEmpty) {
+          return _buildContainer(
+            child: SizedBox(
+              height: widget.height,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.show_chart, color: Colors.grey, size: 48),
+                    SizedBox(height: 16),
+                    Text(
+                      'Nenhuma transação encontrada',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Adicione transações para visualizar o gráfico',
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          );
+        }
+
+        // Normal state with chart
+        return _buildContainer(
+          child: Column(
+            children: [
+              // Title
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+
+              // Chart
+              SizedBox(
+                height: widget.height,
+                child: _buildLineChart(chartSummary.dataPoints),
+              ),
+              const SizedBox(height: 24),
+
+              // Summary cards
+              _buildSummaryCards(chartSummary),
+            ],
           ),
-        ),
-      );
-    }
-
-    // Normal state with chart
-    final chartData = _processChartData();
-    final summaryData = _calculateSummary(chartData);
-
-    return _buildContainer(
-      child: Column(
-        children: [
-          // Title
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF333333),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-
-          // Chart
-          SizedBox(height: height, child: _buildLineChart(chartData)),
-          const SizedBox(height: 24),
-
-          // Summary cards
-          _buildSummaryCards(summaryData),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -138,55 +165,6 @@ class HomePageChart extends StatelessWidget {
     );
   }
 
-  List<ChartDataPoint> _processChartData() {
-    // Sort transactions by date
-    final sorted = List<MockTransaction>.from(
-      _mockTransactions,
-    )..sort((a, b) => DateTime.parse(a.date).compareTo(DateTime.parse(b.date)));
-
-    double runningBalance = 0;
-    final List<ChartDataPoint> data = [];
-
-    for (int i = 0; i < sorted.length; i++) {
-      final transaction = sorted[i];
-      final date = DateTime.parse(transaction.date);
-      final isCredit = transaction.type == 'Credit';
-
-      runningBalance += transaction.value;
-
-      data.add(
-        ChartDataPoint(
-          index: i,
-          date: date,
-          dateLabel: DateFormat('dd/MM').format(date),
-          entradas: isCredit ? transaction.value : 0,
-          saidas: isCredit ? 0 : transaction.value.abs(),
-          saldo: runningBalance,
-        ),
-      );
-    }
-
-    return data;
-  }
-
-  SummaryData _calculateSummary(List<ChartDataPoint> chartData) {
-    final totalEntradas = chartData.fold<double>(
-      0.0,
-      (sum, item) => sum + item.entradas,
-    );
-    final totalSaidas = chartData.fold<double>(
-      0.0,
-      (sum, item) => sum + item.saidas,
-    );
-    final double saldoAtual = chartData.isNotEmpty ? chartData.last.saldo : 0.0;
-
-    return SummaryData(
-      totalEntradas: totalEntradas,
-      totalSaidas: totalSaidas,
-      saldoAtual: saldoAtual,
-    );
-  }
-
   Widget _buildLineChart(List<ChartDataPoint> chartData) {
     if (chartData.isEmpty) {
       return const Center(child: Text('Sem dados para exibir'));
@@ -196,14 +174,15 @@ class HomePageChart extends StatelessWidget {
     final allValues = chartData.map((e) => e.saldo).toList();
     final minY = allValues.reduce((a, b) => a < b ? a : b);
     final maxY = allValues.reduce((a, b) => a > b ? a : b);
-    final padding = (maxY - minY) * 0.1;
+    final range = maxY - minY;
+    final padding = range == 0 ? 100.0 : range * 0.1;
 
     return LineChart(
       LineChartData(
         gridData: FlGridData(
-          show: showGrid,
+          show: widget.showGrid,
           drawVerticalLine: true,
-          horizontalInterval: (maxY - minY) / 5,
+          horizontalInterval: range == 0 ? 50 : range / 5,
           getDrawingHorizontalLine: (value) => FlLine(
             color: Colors.grey.shade200,
             strokeWidth: 1,
@@ -253,7 +232,7 @@ class HomePageChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 70,
-              interval: (maxY - minY) / 4,
+              interval: range == 0 ? 50 : range / 4,
               getTitlesWidget: (value, meta) {
                 return Text(
                   _formatCurrencyShort(value),
@@ -280,6 +259,9 @@ class HomePageChart extends StatelessWidget {
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final index = spot.x.toInt();
+                if (index < 0 || index >= chartData.length) {
+                  return null;
+                }
                 final dataPoint = chartData[index];
                 return LineTooltipItem(
                   '${dataPoint.dateLabel}\n',
@@ -333,7 +315,7 @@ class HomePageChart extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCards(SummaryData summary) {
+  Widget _buildSummaryCards(ChartSummary summary) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 500;
@@ -458,50 +440,4 @@ class HomePageChart extends StatelessWidget {
     }
     return 'R\$ ${amount.toStringAsFixed(0)}';
   }
-}
-
-// =============================================================================
-// HELPER CLASSES
-// =============================================================================
-
-class MockTransaction {
-  final String date;
-  final String type; // 'Credit' or 'Debit'
-  final double value;
-
-  MockTransaction({
-    required this.date,
-    required this.type,
-    required this.value,
-  });
-}
-
-class ChartDataPoint {
-  final int index;
-  final DateTime date;
-  final String dateLabel;
-  final double entradas;
-  final double saidas;
-  final double saldo;
-
-  ChartDataPoint({
-    required this.index,
-    required this.date,
-    required this.dateLabel,
-    required this.entradas,
-    required this.saidas,
-    required this.saldo,
-  });
-}
-
-class SummaryData {
-  final double totalEntradas;
-  final double totalSaidas;
-  final double saldoAtual;
-
-  SummaryData({
-    required this.totalEntradas,
-    required this.totalSaidas,
-    required this.saldoAtual,
-  });
 }
