@@ -13,16 +13,8 @@ class TransactionService {
   // SAVE (já existia)
   // ==========================================================================
   Future<void> save(Transaction tx) async {
-    final data = {
-      'userId': _userId,
-      'type': tx.type.name,
-      'value': tx.value,
-      'date': tx.date,
-      'description': tx.description,
-      'category': tx.category,
-      'anexo': tx.anexo,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
+    final data = tx.toFirebase(_userId);
+    data['createdAt'] = FieldValue.serverTimestamp();
 
     if (tx.id.isEmpty) {
       await _collection.add(data);

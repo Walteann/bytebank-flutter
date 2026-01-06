@@ -71,20 +71,6 @@ class _StatementState extends State<Statement> {
     super.dispose();
   }
 
-  Future<void> _loadMore() async {
-    setState(() => _isLoadingMore = true);
-
-    // simula delay de rede / processamento
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    // gera mais transações mock
-    final List<Transaction> more = _generateMoreTransactions(10);
-    _allTransitions.addAll(more);
-
-    _applyFilters();
-
-    setState(() => _isLoadingMore = false);
-  }
 
   // adiciona uma transação de exemplo ao Firestore (útil em DEV)
   Future<void> addSampleTransactionToFirebase({
@@ -684,7 +670,7 @@ class _StatementState extends State<Statement> {
                     leading: CircleAvatar(
                       backgroundColor: _colorForType(
                         tx.type,
-                      ).withValues(alpha: 0.1),
+                      ).withOpacity(0.1),
                       child: Icon(
                         tx.type == TransactionType.credit
                             ? Icons.arrow_downward
