@@ -71,6 +71,40 @@ class _StatementState extends State<Statement> {
     super.dispose();
   }
 
+
+  // adiciona uma transação de exemplo ao Firestore (útil em DEV)
+  Future<void> addSampleTransactionToFirebase({
+    String ownerId = 'demo_user',
+    String type = 'debit',
+    double value = 42.0,
+    DateTime? date,
+    String description = 'Lançamento demo',
+    String category = 'Outros',
+    List<String> anexo = const [],
+  }) async {
+    try {
+      final doc = {
+        'userId': ownerId,
+        'type': type,
+        'value': value,
+        'date': Timestamp.fromDate(date ?? DateTime.now()),
+        'description': description,
+        'category': category,
+        'anexo': anexo,
+      };
+      final ref = await _firestore
+          .collection('transactions')
+          .add(doc)
+          .timeout(const Duration(seconds: 5));
+      debugPrint('Documento criado: ${ref.id}');
+    } catch (e, st) {
+      debugPrint('Erro em addSampleTransactionToFirebase: $e');
+      debugPrint('$st');
+      rethrow;
+    }
+  }
+
+  //firestore fetch dados usuario
   Future<void> fetchTransactionsFromFirestore({
     String ownerId = 'demo_user',
   }) async {
@@ -79,7 +113,7 @@ class _StatementState extends State<Statement> {
       final snap = await _firestore
           .collection('transactions')
           .where('userId', isEqualTo: ownerId)
-           .orderBy('date', descending: true)
+          .orderBy('date', descending: true)
           .get()
           .timeout(const Duration(seconds: 5));
 
@@ -227,7 +261,10 @@ class _StatementState extends State<Statement> {
     String integerPart = parts[0];
     String decimalPart = parts[1];
     RegExp reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-    String result = integerPart.replaceAllMapped(reg, (Match match) => '${match[1]}.');
+    String result = integerPart.replaceAllMapped(
+      reg,
+      (Match match) => '${match[1]}.',
+    );
     return '$result,$decimalPart';
   }
 
@@ -633,7 +670,7 @@ class _StatementState extends State<Statement> {
                     leading: CircleAvatar(
                       backgroundColor: _colorForType(
                         tx.type,
-                      ).withValues(alpha: 0.1),
+                      ).withOpacity(0.1),
                       child: Icon(
                         tx.type == TransactionType.credit
                             ? Icons.arrow_downward

@@ -1,8 +1,6 @@
 import 'package:bytebank_flutter/file_base64_service.dart';
-import 'package:bytebank_flutter/storage_service.dart';
 import 'package:bytebank_flutter/transaction_model.dart';
 import 'package:bytebank_flutter/transaction_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
